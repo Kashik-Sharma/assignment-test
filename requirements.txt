@@ -1,0 +1,17 @@
+pandas
+numpy
+pymongo
+Faker
+nltk
+chromadb
+sentence-transformers
+fastapi
+uvicorn
+PyPDF2
+python-docx
+langchain==0.3.7
+google-cloud-aiplatform==1.72.0
+pydantic==2.9.2
+python-multipart==0.0.17
+openai
+langchain_openai==0.2.8

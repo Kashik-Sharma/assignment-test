@@ -1,0 +1,9 @@
+This application leverages Retrieval-Augmented Generation (RAG) to answer queries based on uploaded .txt files.
+When a user uploads a .txt file through the /upload-file endpoint, the application extracts the text,
+splits it into chunks (1000 characters each with a 100-character overlap), and stores these chunks in ChromaDB.
+ChromaDB acts as a vector database, efficiently storing the text chunks for fast retrieval.
+
+When a query is submitted via the /query endpoint, the system retrieves the most similar text chunks from ChromaDB using semantic search.
+These chunks are then passed to the Gemini model, which generates a human-readable response based on the retrieved context.
+This combination of retrieval from ChromaDB and generation by Gemini enables the application to answer questions with relevant and contextual information from the uploaded files.
+To run the application, simply start the FastAPI server with uvicorn and interact with the endpoints via POST requests to upload files and query the system.

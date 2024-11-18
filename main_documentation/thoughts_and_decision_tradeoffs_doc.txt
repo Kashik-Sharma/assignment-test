@@ -1,0 +1,101 @@
+1. Data Ingestion (MongoDB)
+Code Overview:
+We started by generating sample data, which includes users, products, and sales. This data was stored in MongoDB to simulate a typical data pipeline.
+
+Design Choices:
+
+MongoDB was chosen for its flexibility in handling both structured and unstructured data (e.g., users' structured information, product descriptions, and sales transactions).
+CSV Files were used to simulate structured data. These files were read into pandas DataFrames and then inserted into MongoDB collections.
+Trade-offs:
+
+Data Type Handling: For ease of processing, missing values were handled by filling or replacing them with default values (e.g., filling missing age with the mean, country with "Unknown"). While this is fast and simple, it may not always reflect the true data distribution in production systems.
+Thought Process:
+
+We chose MongoDB because of its document-oriented nature, which allows us to store both structured and unstructured data easily.
+By storing the raw data in MongoDB, we can maintain a backup of the original data and preprocess it separately, making the system more flexible.
+2. Preprocessing
+Code Overview:
+We wrote preprocessing functions that cleaned and transformed the raw data in MongoDB. This included handling missing values, duplicates, and ensuring correct data types for structured data. For unstructured data (e.g., product reviews and descriptions), we performed text cleaning (e.g., removing special characters, converting text to lowercase).
+
+Design Choices:
+
+Missing Value Handling: We filled missing values with default values (e.g., replacing missing country with "Unknown"). This choice ensures smooth pipeline execution but may distort the data distribution.
+Text Preprocessing: For unstructured text data (e.g., product descriptions and reviews), we cleaned text by removing special characters, converting to lowercase, and eliminating stopwords.
+Trade-offs:
+
+Text Data Cleaning: We used basic text preprocessing techniques like tokenization and removing special characters. This was chosen for simplicity and speed. However, more sophisticated preprocessing (e.g., stemming, lemmatization) could have been applied for better accuracy but at the cost of additional complexity.
+Missing Values: Instead of advanced techniques like imputation or prediction-based filling, we used basic methods (mean, "Unknown"). This is sufficient for this exercise but might not be optimal in production.
+Thought Process:
+
+Preprocessing was focused on ensuring the data was clean and ready for both storage in MongoDB and vectorization. For structured data, handling missing values and ensuring consistency was a priority.
+For unstructured data, basic cleaning was performed to improve the quality of embeddings later in the pipeline.
+3. Vectorization (Using ChromaDB)
+Code Overview:
+We created functions to ingest data (as chunks) into ChromaDB and generated embeddings using the Sentence-Transformer model. This allows us to perform similarity-based queries efficiently.
+
+Design Choices:
+
+ChromaDB was chosen as the vector store because of its ability to efficiently store and query vector embeddings.
+Sentence-Transformer (all-MiniLM-L6-v2) was selected for generating embeddings due to its good trade-off between speed and accuracy. It’s capable of embedding a wide range of text types efficiently.
+Trade-offs:
+
+Embedding Model: While the all-MiniLM-L6-v2 model is efficient, it may not perform as well as larger models (e.g., RoBERTa or T5) for certain tasks. However, we chose this model to balance performance and computational cost.
+Storage: ChromaDB uses a simple persistent local file system for storage. For larger datasets or production systems, a more scalable cloud-based vector store might be needed.
+Thought Process:
+
+ChromaDB was used because it efficiently handles vector embeddings, supporting both similarity search and persistence. Sentence-Transformer embeddings were used because they offer a balance between quality and speed.
+We stored embeddings as chunks in ChromaDB, ensuring that each chunk could be retrieved independently when queried.
+4. Querying with ChromaDB
+Code Overview:
+We created an API using FastAPI to allow querying based on a text prompt. When a user queries, the API retrieves the most similar text chunks from ChromaDB and generates a response using the Gemini LLM.
+
+Design Choices:
+
+FastAPI was selected for its speed, simplicity, and ability to handle asynchronous operations like querying ChromaDB.
+ChromaDB’s query() method was used to retrieve the top-k most similar embeddings based on the query. We used vector similarity (cosine distance) for the search.
+Trade-offs:
+
+Query Efficiency: The current solution may not scale efficiently for very large datasets. Future optimizations like sharding or more sophisticated indexing could help with this issue.
+Embedding Retrieval: We query ChromaDB based on similarity. However, fine-tuning embeddings or using a more specialized retrieval model could improve results but would add complexity and resource overhead.
+Thought Process:
+
+We chose to combine retrieval-based generation (RAG) with LLMs to generate contextually relevant answers. By using ChromaDB, we were able to quickly retrieve relevant information and feed it into the Gemini model to generate answers.
+5. File Upload and Chunking
+Code Overview:
+The file upload route allows users to upload .txt files. After uploading, the file content is processed, split into chunks, and stored in ChromaDB.
+
+Design Choices:
+
+Chunking: Text was split into chunks of 1000 characters with 100-character overlap to balance context and performance. This choice makes the system scalable and prevents memory overload.
+Text Processing: Each chunk is stored in ChromaDB along with its metadata, ensuring that each piece of text is independently searchable.
+Trade-offs:
+
+Chunk Size: A chunk size of 1000 characters was chosen, but depending on the document type, a different size may be more effective. If chunks are too large, they may contain irrelevant context; if too small, they might lack enough information for the model to generate accurate responses.
+Thought Process:
+
+The choice of chunking ensures that we don’t store too much irrelevant information in one chunk. Overlap ensures continuity of context between chunks.
+6. Retrieval-Augmented Generation (RAG) with Gemini LLM
+Code Overview:
+The RAG approach involves using ChromaDB to retrieve similar text chunks based on a query, and then generating an answer using the Gemini LLM model, which is fed the context from ChromaDB.
+
+Design Choices:
+
+Retriever-Augmented Generation (RAG): The combination of retrieval-based search and generation allows for a more precise answer based on real-time context, rather than relying solely on the language model's training data.
+Gemini LLM: Gemini was chosen for its generative capabilities, which provide high-quality responses based on the given context.
+Trade-offs:
+
+Response Latency: Using an external LLM like Gemini can introduce latency in responses. For faster queries, the system might need to cache results or use smaller models.
+Model Accuracy: While RAG is powerful, it depends on the quality of the retrieved documents. If irrelevant documents are retrieved, the generated answers might be incorrect.
+Thought Process:
+
+By combining retrieval and generation, we leverage the best of both worlds: efficient and accurate data retrieval from ChromaDB, followed by reasoning and response generation by the LLM.
+We store the retrieved context and generate a response dynamically, ensuring that the model’s output is grounded in real, retrieved data.
+Conclusion
+The system was designed with scalability and flexibility in mind, combining:
+
+MongoDB for raw data storage,
+ChromaDB for efficient vector storage and retrieval,
+Sentence-Transformer for embedding text,
+FastAPI for creating a robust and fast API,
+Gemini LLM for generating contextual responses.
+The trade-offs mainly involved balancing speed, accuracy, and scalability. Future improvements could include using a larger model for embeddings, optimizing vector search for large datasets, or deploying LLMs more efficiently for faster responses.
